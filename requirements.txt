@@ -1,0 +1,3 @@
+requests>=2.27.1
+websockets>=10.2
+showdownpy>=0.1.5
