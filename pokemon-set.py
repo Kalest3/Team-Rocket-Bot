@@ -1,0 +1,3 @@
+pokemonsSet: dict = {
+    "alakazam": {}
+}

@@ -1,8 +1,14 @@
 import requests
 import json
+import logging
 from config import *
 from team import teamPacked
 import battle.battle as battle
+
+logging.basicConfig(
+        format="%(asctime)s %(message)s",
+        level=logging.DEBUG,
+        )
 
 class user():
     def __init__(self, websocket):
@@ -10,6 +16,7 @@ class user():
         self.msg = None
         self.websocket = websocket
         self.battles = {}
+
     async def login(self):
         while True:
             self.msg = str(await self.websocket.recv())
@@ -24,6 +31,7 @@ class user():
                 self.loginDone = True
             if self.loginDone:
                 await self.on_login()
+
     async def on_login(self):
         if self.msg[0:4] == "|pm|":
             user = self.msg.split("|")[2]
@@ -34,9 +42,11 @@ class user():
         if self.msg[0:15] == ">battle-gen1ou-":
             splitLines = self.msg.splitlines()
             battleID = splitLines[0][1:]
-            if splitLines[1] == "|init|battle":
-                self.battleActive: battle.on_battle = battle.on_battle(self.msg, self.websocket)
-                self.battles[self.battleActive.battleID] = self.battleActive
+            for line in splitLines:
+                if line == "|init|battle":
+                    self.battleActive: battle.on_battle = battle.on_battle(self.msg, self.websocket)
+                    self.battles[self.battleActive.battleID] = self.battleActive
+                    break
             await self.battles[battleID].message(self.msg)
 
     async def utm(self, team):

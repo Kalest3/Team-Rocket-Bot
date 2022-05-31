@@ -10,5 +10,4 @@ async def run():
         await bot.login()
 
 if __name__ == "__main__":
-    eventLoop = asyncio.get_event_loop()
-    eventLoop.run_until_complete(run())
+    asyncio.run(run())

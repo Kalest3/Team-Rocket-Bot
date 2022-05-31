@@ -1,7 +1,11 @@
 import json
 import random
 import asyncio
+import pokebase
+
+from showdown import utils
 from config import username
+from battle.decisions import *
 
 async def reconnectToBattle(msg, websocket):
     """If the bot was in a battle but it was disconnected from the server,
@@ -28,15 +32,14 @@ class on_battle():
         self.pokemonlist = {}
         self.moves_available = []
         self.playerID = None
+        self.foePokemon = None
+        self.foeID = None
         self.newTurn = False
+        self.active = None
         self.battleID = self.msg.splitlines()[0][1:]
 
     async def message(self, msg):
         self.battleEnd = False
-
-        if msg == f'>{self.battleID}\n|request|':
-            await self.timeron()
-            await self.motto()
 
         splitmsg = msg.splitlines()
         for line in splitmsg:
@@ -48,19 +51,38 @@ class on_battle():
                     await self.switch(jsondata)
                 if 'active' in setjsonData:
                     self.newTurn = True
+                    self.active = splitmsg
+            if line[0:8] == "|player|" and line.count("|") == 5:
+                if utils.name_to_id(line.split("|")[3]) != utils.name_to_id(username):
+                    self.foeID = line.split("|")[2]
             if line[0:5] == "|win|":
                 self.battleEnd = True
+
+            if line[0:8] == "|switch|":
+                if line.split("|")[2].split(":")[0].strip() == f"{self.foeID}a":
+                    self.foePokemon = line.split("|")[2].split(":")[1].strip()
+                    self.foePokemon = pokebase.pokemon(utils.name_to_id(self.foePokemon))
+
+        if msg == f'>{self.battleID}\n|request|':
+            await self.timeron()
+            await self.motto()
+
         if self.battleEnd:
             if line[5:] == username:
                 await self.win()
             else:
                 await self.lose()
             return await self.leave()
-        if self.newTurn:
-            requestMoves = splitmsg[1][9:]
+        if self.newTurn and self.foePokemon:
+            requestMoves = self.active[1][9:]
             requestMoves = json.loads(requestMoves)["active"][0]["moves"]
             self.movementsAvailable(requestMoves)
-            await self.choosemove(random.choice(self.moves_available))
+            if "recharge" not in self.moves_available:
+                decisionMove: decision = decision(self.moves_available, self.foePokemon)
+                move = decisionMove._decisionByPower()
+                await self.choosemove(move)
+            else:
+                await self.choosemove('recharge')
             self.clearMovementsAvailable()
             self.newTurn = False
     
@@ -79,7 +101,7 @@ class on_battle():
             if 'disabled' in attributesMoves:
                 if move['disabled']:
                     continue
-            self.moves_available.append(move['id'])
+            self.moves_available.append(move['move'].lower())
     
     def clearMovementsAvailable(self):
         return self.moves_available.clear()
