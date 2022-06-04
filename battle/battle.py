@@ -31,11 +31,15 @@ class on_battle():
         self.pokemons = {}
         self.pokemonlist = {}
         self.moves_available = []
+        self.pokemonHP = None
         self.playerID = None
         self.foePokemon = None
+        self.foePokemonHP = None
         self.foeID = None
         self.newTurn = False
         self.active = None
+        self.jsonData = None
+        self.allies = []
         self.battleID = self.msg.splitlines()[0][1:]
 
     async def message(self, msg):
@@ -43,25 +47,37 @@ class on_battle():
 
         splitmsg = msg.splitlines()
         for line in splitmsg:
-            if line[0:10] == "|request|{":
+            if line[:10] == "|request|{":
                 contentJson = line[9:]
-                jsondata = json.loads(contentJson)
-                setjsonData = set(jsondata)
+                self.jsonData = json.loads(contentJson)
+                setjsonData = set(self.jsonData)
                 if 'forceSwitch' in setjsonData:
-                    await self.switch(jsondata)
+                    await self.switch()
                 if 'active' in setjsonData:
                     self.newTurn = True
-                    self.active = splitmsg
-            if line[0:8] == "|player|" and line.count("|") == 5:
+                    pokemons = self.jsonData["side"]["pokemon"]
+                    self.active = str(pokemons[0]["details"]).lower()
+                    for pokemon in pokemons:
+                        if pokemon["active"] == "false":
+                            self.allies.append(pokebase.pokemon(str(pokemon['details']).lower()))
+            if line[:8] == "|player|" and line.count("|") == 5:
                 if utils.name_to_id(line.split("|")[3]) != utils.name_to_id(username):
                     self.foeID = line.split("|")[2]
-            if line[0:5] == "|win|":
+            if line[:5] == "|win|":
                 self.battleEnd = True
 
-            if line[0:8] == "|switch|":
+            if line[:8] == "|switch|":
                 if line.split("|")[2].split(":")[0].strip() == f"{self.foeID}a":
                     self.foePokemon = line.split("|")[2].split(":")[1].strip()
                     self.foePokemon = pokebase.pokemon(utils.name_to_id(self.foePokemon))
+            if line[:9] == "|-damage|" or line[:7] == "|-heal|":
+                hp = line.split("|")[-1].split("/")[0]
+                player = line.split("|")[2].split(":")[0][:2]
+                if player == self.playerID:
+                    self.pokemonHP = hp
+                else:
+                    stat_base_hp = pokebase.pokemon(self.foePokemon).stats[0].base_stat
+                    self.foePokemonHP = (stat_base_hp + 15) * 2 + 252 / 4 * 100 / 100 + 110
 
         if msg == f'>{self.battleID}\n|request|':
             await self.timeron()
@@ -74,21 +90,21 @@ class on_battle():
                 await self.lose()
             return await self.leave()
         if self.newTurn and self.foePokemon:
-            requestMoves = self.active[1][9:]
-            requestMoves = json.loads(requestMoves)["active"][0]["moves"]
+            requestMoves = self.jsonData["active"][0]["moves"]
             self.movementsAvailable(requestMoves)
             if "recharge" not in self.moves_available:
-                decisionMove: decision = decision(self.moves_available, self.foePokemon)
-                move = decisionMove._decisionByPower()
-                await self.choosemove(move)
+                pokemon = pokebase.pokemon(self.active)
+                decisionMove: decision = decision(self.moves_available, self.foePokemon, pokemon, self.allies, self.pokemonHP, self.foePokemonHP)
+                move = decisionMove._decisionByLogic()
+                await self.websocket.send(f"{self.battleID}|/choose {move}")
             else:
                 await self.choosemove('recharge')
             self.clearMovementsAvailable()
             self.newTurn = False
     
-    def updatePokemons(self, jsondata):
-        pokemons = jsondata["side"]["pokemon"]
-        self.playerID = jsondata["side"]["id"]
+    def updatePokemons(self):
+        pokemons = self.jsonData["side"]["pokemon"]
+        self.playerID = self.jsonData["side"]["id"]
         for number, pokemon in enumerate(pokemons):
             self.pokemonlist[str(pokemon['details']).split(",")[0]] = number + 1
         for pokemon in pokemons:
@@ -106,8 +122,8 @@ class on_battle():
     def clearMovementsAvailable(self):
         return self.moves_available.clear()
 
-    async def switch(self, jsondata):
-        self.updatePokemons(jsondata)
+    async def switch(self):
+        self.updatePokemons()
         pokemonSwitch = random.choice(list(self.pokemonlist))
         await self.websocket.send(f"{self.battleID}|/choose switch {self.pokemonlist[pokemonSwitch]}")
     
