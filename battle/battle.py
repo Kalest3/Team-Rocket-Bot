@@ -30,6 +30,7 @@ class on_battle():
         self.websocket = websocket
         self.pokemons = {}
         self.pokemonlist = {}
+        self.alliesHP = {}
         self.moves_available = []
         self.pokemonHP = None
         self.playerID = None
@@ -53,16 +54,22 @@ class on_battle():
                 setjsonData = set(self.jsonData)
                 if 'forceSwitch' in setjsonData:
                     await self.switch()
+
                 if 'active' in setjsonData:
                     self.newTurn = True
                     pokemons = self.jsonData["side"]["pokemon"]
                     self.active = str(pokemons[0]["details"]).lower()
                     for pokemon in pokemons:
                         if pokemon["active"] == "false":
-                            self.allies.append(pokebase.pokemon(str(pokemon['details']).lower()))
+                            pokemonID = str(pokemon['details']).lower()
+                            pokemonHP = int(str(pokemon['condition'].split("/")[0]))
+                            self.allies.append(pokebase.pokemon(pokemonID))
+                            self.alliesHP[pokemonID] = pokemonHP
+
             if line[:8] == "|player|" and line.count("|") == 5:
                 if utils.name_to_id(line.split("|")[3]) != utils.name_to_id(username):
                     self.foeID = line.split("|")[2]
+
             if line[:5] == "|win|":
                 self.battleEnd = True
 
@@ -70,14 +77,9 @@ class on_battle():
                 if line.split("|")[2].split(":")[0].strip() == f"{self.foeID}a":
                     self.foePokemon = line.split("|")[2].split(":")[1].strip()
                     self.foePokemon = pokebase.pokemon(utils.name_to_id(self.foePokemon))
+                self.updateHP(line)
             if line[:9] == "|-damage|" or line[:7] == "|-heal|":
-                hp = line.split("|")[-1].split("/")[0]
-                player = line.split("|")[2].split(":")[0][:2]
-                if player == self.playerID:
-                    self.pokemonHP = hp
-                else:
-                    stat_base_hp = pokebase.pokemon(self.foePokemon).stats[0].base_stat
-                    self.foePokemonHP = (stat_base_hp + 15) * 2 + 252 / 4 * 100 / 100 + 110
+                self.updateHP(line)
 
         if msg == f'>{self.battleID}\n|request|':
             await self.timeron()
@@ -94,7 +96,7 @@ class on_battle():
             self.movementsAvailable(requestMoves)
             if "recharge" not in self.moves_available:
                 pokemon = pokebase.pokemon(self.active)
-                decisionMove: decision = decision(self.moves_available, self.foePokemon, pokemon, self.allies, self.pokemonHP, self.foePokemonHP)
+                decisionMove: decision = decision(self.moves_available, self.foePokemon, pokemon, self.allies, self.pokemonHP, self.foePokemonHP, self.alliesHP)
                 move = decisionMove._decisionByLogic()
                 await self.websocket.send(f"{self.battleID}|/choose {move}")
             else:
@@ -111,6 +113,15 @@ class on_battle():
             if pokemon['condition'] == '0 fnt':
                 self.pokemonlist.pop(str(pokemon['details']).split(",")[0])
     
+    def updateHP(self, data):
+        hp = data.split("|")[-1].split("/")[0]
+        player = data.split("|")[2].split(":")[0][:2]
+        if player == self.playerID:
+            self.pokemonHP = hp
+        else:
+            stat_base_hp = self.foePokemon.stats[0].base_stat
+            self.foePokemonHP = (stat_base_hp + 15) * 2 + 252 / 4 * 100 / 100 + 110
+
     def movementsAvailable(self, moves):
         for move in moves:
             attributesMoves = set(move)

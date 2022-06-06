@@ -3,20 +3,22 @@ import pokebase
 from pokemon_set import *
 
 class decision():
-    def __init__(self, moves_available, foePokemon, pokemon, allies, pokemonHP, foePokemonHP) -> None:
+    def __init__(self, moves_available, foePokemon, pokemon, allies, pokemonHP, foePokemonHP, alliesHP) -> None:
         self.moves_available = moves_available
         self.pokemon = pokemon
-        self.foePokemon = foePokemon
-        self.allies = allies
-        self.foePokemonType = []
         self.pokemonType = []
         self.pokemonHP = pokemonHP
+        self.pokemonStats = {}
+        self.allies = allies
+        self.alliesHP = alliesHP
+        self.alliesStats = {}
+        self.alliesType - {}
+        self.foePokemon = foePokemon
+        self.foePokemonType = []
         self.foePokemonHP = foePokemonHP
+        self.foePokemonStats = {}
         self.types = {}
         self.movesDamageClass = {}
-        self.pokemonStats = {}
-        self.foePokemonStats = {}
-        self.alliesStats = {}
 
     def _decisionByLogic(self):
         self.defPokemonStats()
@@ -65,13 +67,23 @@ class decision():
             typesGenOne = self.foePokemon.past_types[0].types
             for type_ in typesGenOne:
                 self.foePokemonType.append(str(type_.type))
+        
+        for ally in self.allies:
+            if not ally.past_types:
+                types = ally.types
+                for type_ in types:
+                    self.alliesType[ally] = str(type_.type)
+            else:
+                typesGenOne = ally.past_types[0].types
+                for type_ in typesGenOne:
+                    self.foePokemonType.append(str(type_.type))
     
-    def setMovesPower(self, move, foePokemon, pokemon, pokemonStats, foePokemonStats):
+    def setMovesPower(self, move, pokemonStats, foePokemonStats, pokemonType, foePokemonType):
         move = pokebase.move(move)
         moveDamageClass = {}
         movePower = 2 * 100 / 5 + 2
         if len(move.past_values) > 1: movePower *= move.past_values[1].power if move.past_values[1].power else 0
-        else: movePower = move.power
+        else: movePower *= move.power
         moveType = str(move.type)
         if not movePower:
             movePower = 0
@@ -87,12 +99,13 @@ class decision():
                 atkPokemon = pokemonStats['special-attack']
                 defFoePokemon = foePokemonStats['special-attack']
         movePower *= (atkPokemon /defFoePokemon) / 50 + 2
-        if move.type in self.pokemonType:
+        if move.type in pokemonType:
             movePower *= 1.5
-        for type_ in self.foePokemonType:
+        for type_ in foePokemonType:
             moveType = moveType.capitalize()
-            movePower += self.typechart(type_, moveType, movePower)
+            movePower *= self.typechart(type_, moveType, movePower)
         movePower *= 217 / 255
+        print(movePower)
         return movePower
 
     def checkMovesDamage(self):
@@ -100,13 +113,13 @@ class decision():
         if self.foePokemon in pokemonsSet:
             moves = pokemonsSet[self.foePokemon]
             for move in moves:
-                movePower = self.setMovesPower(move, self.pokemon, self.foePokemon, self.foePokemonStats, self.pokemonStats)
+                movePower = self.setMovesPower(move, self.foePokemonStats, self.pokemonStats)
                 if self.pokemonHP - movePower <= 0:
                     choice = self.checkSecurePokemons()
                     return choice
 
         for move in self.moves_available:
-            movePower = self.setMovesPower(move, self.foePokemon, self.pokemon, self.pokemonStats, self.foePokemonStats)
+            movePower = self.setMovesPower(move, self.pokemonStats, self.foePokemonStats)
             if self.foePokemonHP - movePower <= 0:
                 return f"move {move}"
             if not movePower:
@@ -120,8 +133,8 @@ class decision():
             if self.foePokemon in pokemonsSet:
                 moves = pokemonsSet[self.foePokemon]
                 for move in moves:
-                    movePower = self.setMovesPower(move, ally, self.foePokemon, self.foePokemonStats, self.alliesStats[ally])
-                    damagesPerAllies[ally] = self.pokemonStats['hp'] - movePower
+                    movePower = self.setMovesPower(move, self.foePokemonStats, self.alliesStats[ally])
+                    damagesPerAllies[ally] = self.alliesHP[ally] - movePower
 
         if damagesPerAllies:
             security = {allyKey: damage for allyKey, damage in sorted(damagesPerAllies.items(), key=lambda item: item[1])}
@@ -130,7 +143,7 @@ class decision():
             statusMove = []
             movesByPower = {}
             for move in self.moves_available:
-                movePower = self.setMovesPower(move, self.foePokemon, self.pokemon, self.foePokemonStats, self.pokemonStats, self.foePokemonStats)
+                movePower = self.setMovesPower(move, self.foePokemonStats, self.pokemonStats, self.foePokemonStats)
                 movesByPower[move] = movePower
                 if not movePower:
                     statusMove.append(move)
