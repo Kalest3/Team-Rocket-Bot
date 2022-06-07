@@ -65,6 +65,7 @@ class on_battle():
                             pokemonHP = int(str(pokemon['condition'].split("/")[0]))
                             self.allies.append(pokebase.pokemon(pokemonID))
                             self.alliesHP[pokemonID] = pokemonHP
+                    self.updatePokemons()
 
             if line[:8] == "|player|" and line.count("|") == 5:
                 if utils.name_to_id(line.split("|")[3]) != utils.name_to_id(username):
@@ -103,7 +104,7 @@ class on_battle():
                 await self.choosemove('recharge')
             self.clearMovementsAvailable()
             self.newTurn = False
-    
+
     def updatePokemons(self):
         pokemons = self.jsonData["side"]["pokemon"]
         self.playerID = self.jsonData["side"]["id"]
@@ -114,13 +115,12 @@ class on_battle():
                 self.pokemonlist.pop(str(pokemon['details']).split(",")[0])
     
     def updateHP(self, data):
-        hp = data.split("|")[-1].split("/")[0]
+        hp = int(data.split("|")[-1].split("/")[0])
         player = data.split("|")[2].split(":")[0][:2]
         if player == self.playerID:
-            self.pokemonHP = hp
+            self.pokemonHP = hp - 60
         else:
-            stat_base_hp = self.foePokemon.stats[0].base_stat
-            self.foePokemonHP = (stat_base_hp + 15) * 2 + 252 / 4 * 100 / 100 + 110
+            self.foePokemonHP = hp
 
     def movementsAvailable(self, moves):
         for move in moves:
