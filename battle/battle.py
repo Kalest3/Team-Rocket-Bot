@@ -56,15 +56,19 @@ class on_battle():
                     await self.switch()
 
                 if 'active' in setjsonData:
+                    self.allies = []
                     self.newTurn = True
                     pokemons = self.jsonData["side"]["pokemon"]
                     self.active = str(pokemons[0]["details"]).lower()
                     for pokemon in pokemons:
-                        if pokemon["active"] == "false":
+                        if pokemon["active"] == False:
                             pokemonID = str(pokemon['details']).lower()
-                            pokemonHP = int(str(pokemon['condition'].split("/")[0]))
-                            self.allies.append(pokebase.pokemon(pokemonID))
-                            self.alliesHP[pokemonID] = pokemonHP
+                            pokemonHP = str(pokemon['condition'].split("/")[0])
+                            if pokemonHP == "0 fnt": pokemonHP = 0
+                            else: pokemonHP = int(pokemonHP)
+                            if pokemonHP:
+                                self.allies.append(pokebase.pokemon(pokemonID))
+                                self.alliesHP[pokemonID] = pokemonHP
                     self.updatePokemons()
 
             if line[:8] == "|player|" and line.count("|") == 5:
@@ -115,8 +119,10 @@ class on_battle():
                 self.pokemonlist.pop(str(pokemon['details']).split(",")[0])
     
     def updateHP(self, data):
-        hp = int(data.split("|")[-1].split("/")[0])
+        hp = data.split("|")[-1].split("/")[0]
         player = data.split("|")[2].split(":")[0][:2]
+        if hp == "0 fnt": hp = 0 
+        else: hp = int(hp)
         if player == self.playerID:
             self.pokemonHP = hp - 60
         else:
