@@ -147,7 +147,7 @@ class decision():
                     damagesPerAllies[ally.name] = self.alliesHP[ally.name] - movePower
 
         if damagesPerAllies:
-            security = {allyKey: damage for allyKey, damage in sorted(damagesPerAllies.items(), key=lambda item: item[1])}
+            security = {allyKey: damage for allyKey, damage in sorted(damagesPerAllies.items(), key=lambda item: item[1], reverse=True)}
             return f'switch {list(security)[0]}'
         else:
             statusMove = []
@@ -478,7 +478,7 @@ class decision():
         elif damageTaken == 1:
             damage = 2
         elif damageTaken == 2:
-            damage = 2
+            damage = 0.5
         elif damageTaken == 3:
             damage = 0
         return damage

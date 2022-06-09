@@ -121,7 +121,7 @@ class on_battle():
     def updateHP(self, data):
         hp = data.split("|")[-1].split("/")[0]
         player = data.split("|")[2].split(":")[0][:2]
-        if hp == "0 fnt": hp = 0 
+        if hp == "0 fnt": hp = 0
         else: hp = int(hp)
         if player == self.playerID:
             self.pokemonHP = hp - 60
