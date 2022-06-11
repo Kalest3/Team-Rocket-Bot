@@ -101,12 +101,11 @@ class on_battle():
             self.movementsAvailable(requestMoves)
             if "recharge" not in self.moves_available:
                 pokemon = pokebase.pokemon(self.active)
-                decisionMove: decision = decision(self.moves_available, self.foePokemon, pokemon, self.allies, self.pokemonHP, self.foePokemonHP, self.alliesHP)
-                move = decisionMove._decisionByLogic()
-                await self.websocket.send(f"{self.battleID}|/choose {move}")
+                decisionMove: decision = decision(self.websocket, self.battleID, self.moves_available, self.foePokemon, pokemon, self.allies, self.pokemonHP, self.foePokemonHP, self.alliesHP)
+                asyncio.create_task(decisionMove._decisionByLogic())
             else:
                 await self.choosemove('recharge')
-            self.clearMovementsAvailable()
+            #self.clearMovementsAvailable()
             self.newTurn = False
 
     def updatePokemons(self):
@@ -129,6 +128,7 @@ class on_battle():
             self.foePokemonHP = hp
 
     def movementsAvailable(self, moves):
+        self.moves_available = []
         for move in moves:
             attributesMoves = set(move)
             if 'disabled' in attributesMoves:

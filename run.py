@@ -5,7 +5,7 @@ from utils.login import user
 uri = 'ws://sim.smogon.com/showdown/websocket'
 
 async def run():
-    async with websockets.connect(uri) as websocket:
+    async with websockets.connect(uri, ping_interval=None) as websocket:
         bot: user = user(websocket)
         await bot.login()
 
