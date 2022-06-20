@@ -53,7 +53,16 @@ class on_battle():
                 self.jsonData = json.loads(contentJson)
                 setjsonData = set(self.jsonData)
                 if 'forceSwitch' in setjsonData:
-                    await self.switch()
+                    decisionSwitch: decision = decision(self.websocket, self.battleID, None, self.foePokemon, None, self.allies, None, self.foePokemonHP, self.alliesHP)
+                    decisionSwitch.defAlliesStats()
+                    decisionSwitch.defAlliesType()
+                    decisionSwitch.defFoePokemonStats()
+                    decisionSwitch.defFoePokemonType()
+                    pokemonSwitch = decisionSwitch.checkSecureSwitch()
+                    if not pokemonSwitch:
+                        self.switch()
+                    else:
+                        await self.websocket.send(f"{self.battleID}|/choose {pokemonSwitch}")
 
                 if 'active' in setjsonData:
                     self.allies = []
@@ -125,7 +134,10 @@ class on_battle():
         if player == self.playerID:
             self.pokemonHP = hp - 60
         else:
-            self.foePokemonHP = hp
+            self.foePokemonHP = (((self.foePokemon.stats[0].base_stat + 15) * 2 + 252 / 4) * 100) / 100 + 100 + 5 
+        print(self.pokemonHP)
+        print(f"HP FOE POKEMON {self.foePokemonHP}")
+        print(player)
 
     def movementsAvailable(self, moves):
         self.moves_available = []
