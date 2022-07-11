@@ -10,6 +10,8 @@ class decision():
         self.websocket = websocket
         self.battleID = battleID
         self.moves_available = moves_available
+        self.moves_availableClass = {}
+        self.foe_moves_availableClass = {}
         self.pokemon = pokemon
         self.pokemonType = []
         self.pokemonHP = pokemonHP
@@ -28,6 +30,9 @@ class decision():
     async def _decisionByLogic(self):
         self.defAllPokemonStats()
         self.check_moves_available()
+        self.defPokemonType()
+        self.defFoePokemonType()
+        self.defAlliesType()
         choice = self.checkMovesDamage()
         await self.websocket.send(f"{self.battleID}|/choose {choice}")
 
@@ -64,10 +69,12 @@ class decision():
             if " " in move:
                 move = move.replace(" ", "-")
             self.moves_available.append(move)
+            self.moves_availableClass[move] = pokebase.move(move)
 
-        self.defPokemonType()
-        self.defFoePokemonType()
-        self.defAlliesType()
+        if self.foePokemon.name in pokemonsSet:
+            moves = pokemonsSet[self.foePokemon.name]
+            for move in moves:
+                self.foe_moves_availableClass[move] = pokebase.move(move)
     
     def defPokemonType(self):
         if not self.pokemon.past_types:
@@ -104,7 +111,6 @@ class decision():
                 self.alliesType[ally] = typeList
 
     def setMovesPower(self, move, pokemonStats, foePokemonStats, pokemonType, foePokemonType):
-        move = pokebase.move(move)
         moveDamageClass = {}
         movePower = 2 * 100 / 5 + 2
         if len(move.past_values) > 1: movePower *= move.past_values[1].power if move.past_values[1].power else 0
@@ -120,9 +126,10 @@ class decision():
                 defFoePokemon = foePokemonStats['defense']
             else:
                 moveDamageClass[move] = 'special'
-                atkPokemon = pokemonStats['special-attack']
-                defFoePokemon = foePokemonStats['special-attack']
-        movePower *= atkPokemon / defFoePokemon / 52
+                atkPokemon = pokemonStats['special-defense']
+                defFoePokemon = foePokemonStats['special-defense']
+        movePower *= atkPokemon / defFoePokemon / 50
+        movePower += 2
         if str(move.type) in pokemonType:
             movePower *= 1.5
         for type_ in foePokemonType:
@@ -134,21 +141,26 @@ class decision():
     def checkMovesDamage(self):
         statusMove = []
         if self.foePokemon.name in pokemonsSet:
-            moves = pokemonsSet[self.foePokemon.name]
-            for move in moves:
+            for move in self.foe_moves_availableClass.values():
                 movePower = self.setMovesPower(move, self.foePokemonStats, self.pokemonStats, self.foePokemonType, self.pokemonType)
-                print(move)
-                print(movePower)
                 if self.pokemonHP - movePower <= 0:
                     choice = self.checkSecureChoice()
                     return choice
 
         for move in self.moves_available:
-            movePower = self.setMovesPower(move, self.pokemonStats, self.foePokemonStats, self.pokemonType, self.foePokemonType)
+            moveClass = self.moves_availableClass[move]
+            movePower = self.setMovesPower(moveClass, self.pokemonStats, self.foePokemonStats, self.pokemonType, self.foePokemonType)
             if self.foePokemonHP - movePower <= 0:
                 return f"move {move}"
             if not movePower:
                 statusMove.append(move)
+        
+        if "hyper-beam" in self.moves_available: 
+            self.moves_available.remove("hyper-beam")
+            self.moves_availableClass.pop("hyper-beam")
+        if "explosion" in self.moves_available: 
+            self.moves_available.remove("explosion")
+            self.moves_availableClass.pop("explosion")
 
         if statusMove:
             return f"move {random.choice(statusMove)}"
@@ -156,12 +168,13 @@ class decision():
             return f"move {random.choice(self.moves_available)}"
 
     def checkSecureChoice(self):
-        securePokemon = self.checkSecureSwitch()
+        securePokemon = self.checkSecureSwitch(False)
         if not securePokemon:
             statusMove = []
             movesByPower = {}
             for move in self.moves_available:
-                movePower = self.setMovesPower(move, self.foePokemonStats, self.pokemonStats, self.foePokemonType, self.pokemonType)
+                moveClass = self.moves_availableClass[move]
+                movePower = self.setMovesPower(moveClass, self.foePokemonStats, self.pokemonStats, self.foePokemonType, self.pokemonType)
                 movesByPower[move] = movePower
                 if not movePower:
                     statusMove.append(move)
@@ -172,19 +185,23 @@ class decision():
                 return f"move {list(movesByPowerOrdered)[0]}"
         return securePokemon
 
-    def checkSecureSwitch(self):
+    def checkSecureSwitch(self, forceSwitch):
         damagesPerAllies = {}
         for ally in self.allies:
             if self.foePokemon.name in pokemonsSet:
-                moves = pokemonsSet[self.foePokemon.name]
-                for move in moves:
-                    movePower = self.setMovesPower(move, self.foePokemonStats, self.alliesStats[ally], self.foePokemonType, self.alliesType[ally])
-                    damagesPerAllies[ally.name] = self.alliesHP[ally.name] - movePower
+                for move in self.foe_moves_availableClass:
+                    moveClass = self.foe_moves_availableClass[move]
+                    movePower = self.setMovesPower(moveClass, self.foePokemonStats, self.alliesStats[ally], self.foePokemonType, self.alliesType[ally])
+                    damagesPerAllies[ally.name] = self.alliesHP[ally.name]
+                    if not forceSwitch: damagesPerAllies[ally.name] -= movePower * 2 
+                    else: damagesPerAllies[ally.name] -= movePower
+                    if damagesPerAllies[ally.name] <= 0: break
 
-        if damagesPerAllies:
-            security = {allyKey: damage for allyKey, damage in sorted(damagesPerAllies.items(), key=lambda item: item[1], reverse=True)}
-            return f'switch {list(security)[0]}'
-        return
+        security = {allyKey: damage for allyKey, damage in sorted(damagesPerAllies.items(), key=lambda item: item[1], reverse=True)}
+
+        if security:
+            if list(security.values())[0] > 0: return f'switch {list(security)[0]}'
+            else: return
 
     def damageClassLogic(self, typeMove):
         movesSpecial = ['fire', 'grass', 'water', 'ice', 'electric', 'psychic', 'dragon']

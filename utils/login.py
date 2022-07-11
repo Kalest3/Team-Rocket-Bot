@@ -4,6 +4,7 @@ import logging
 from config import *
 from team import teamPacked
 import battle.battle as battle
+import asyncio
 
 logging.basicConfig(
         format="%(message)s",
@@ -20,7 +21,6 @@ class user():
     async def login(self):
         while True:
             self.msg = str(await self.websocket.recv())
-            print(self.msg)
             if self.msg[0:10] == '|challstr|':
                 challstr = self.msg[10:]
                 postlogin = requests.post('https://play.pokemonshowdown.com/~~showdown/action.php', data={'act':'login','name':username,'pass':password,'challstr':challstr})
