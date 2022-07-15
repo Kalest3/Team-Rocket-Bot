@@ -4,7 +4,6 @@ import logging
 from config import *
 from team import teamPacked
 import battle.battle as battle
-import asyncio
 
 logging.basicConfig(
         format="%(message)s",
@@ -12,11 +11,12 @@ logging.basicConfig(
         )
 
 class user():
-    def __init__(self, websocket):
+    def __init__(self, websocket, pokemonlist):
         self.loginDone = False
         self.msg = None
         self.websocket = websocket
         self.battles = {}
+        self.pokemonlist = pokemonlist
 
     async def login(self):
         while True:
@@ -44,7 +44,7 @@ class user():
             battleID = splitLines[0][1:]
             for line in splitLines:
                 if line == "|init|battle":
-                    self.battleActive: battle.on_battle = battle.on_battle(self.msg, self.websocket)
+                    self.battleActive: battle.on_battle = battle.on_battle(self.msg, self.websocket, self.pokemonlist)
                     self.battles[self.battleActive.battleID] = self.battleActive
                     break
             await self.battles[battleID].message(self.msg)

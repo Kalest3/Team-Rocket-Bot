@@ -25,11 +25,11 @@ async def reconnectToBattle(msg, websocket):
             await websocket.send(f"|/join {game}")
 
 class on_battle():
-    def __init__(self, msg, websocket) -> None:
+    def __init__(self, msg, websocket, pokemonlist) -> None:
         self.msg = msg
         self.websocket = websocket
         self.pokemons = {}
-        self.pokemonlist = {}
+        self.pokemonlist = pokemonlist
         self.pokemonsHP = {}
         self.alliesHP = {}
         self.moves_available = []
@@ -55,10 +55,6 @@ class on_battle():
                 setjsonData = set(self.jsonData)
                 self.pokemons = self.jsonData["side"]["pokemon"]
                 self.active = name_to_id(self.pokemons[0]["details"])
-                if not self.pokemonlist:
-                    for pokemon in self.pokemons:
-                        pokemon =  name_to_id(str(pokemon['details']).split(",")[0])
-                        self.pokemonlist[pokemon] = pokebase.pokemon(pokemon)
                 
                 self.updatePokemons()
                 for pokemon in self.pokemons:
