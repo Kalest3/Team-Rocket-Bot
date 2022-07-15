@@ -29,7 +29,7 @@ class on_battle():
         self.msg = msg
         self.websocket = websocket
         self.pokemons = {}
-        self.pokemonlist = pokemonlist
+        self.pokemonlist = pokemonlist.copy()
         self.pokemonsHP = {}
         self.alliesHP = {}
         self.moves_available = []

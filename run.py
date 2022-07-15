@@ -3,7 +3,7 @@ import websockets
 from loadAPI import setPokemonList
 from utils.login import user
 
-pokemonlist = setPokemonList().copy()
+pokemonlist = setPokemonList()
 
 uri = 'ws://sim.smogon.com/showdown/websocket'
 
