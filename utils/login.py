@@ -27,6 +27,9 @@ class user():
                 assertion = json.loads(postlogin.text[1:])["assertion"]
                 await self.websocket.send(f'|/trn {username},0,{assertion}')
                 await self.websocket.send(f'|/avatar {avatar}')
+                for room in rooms:
+                    await self.websocket.send(f"|/j {room}")
+
                 await battle.reconnectToBattle(self.msg, self.websocket)
                 self.loginDone = True
             if self.loginDone:
