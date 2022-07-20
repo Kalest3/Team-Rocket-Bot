@@ -2,5 +2,6 @@
     "username":"",
     "password":"",
     "avatar":"",
-    "rooms":[]
+    "rooms":[],
+    "status":""
 }

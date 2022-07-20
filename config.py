@@ -6,3 +6,4 @@ with open('config.json') as json_file:
     password = jsondata['password']
     avatar = jsondata['avatar']
     rooms = jsondata['rooms']
+    status = jsondata['status']
