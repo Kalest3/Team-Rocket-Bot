@@ -140,6 +140,7 @@ class decision():
 
     def checkMovesDamage(self):
         statusMove = []
+        movesByPower = {}
         if self.foePokemon.name in pokemonsSet:
             for move in self.foe_moves_availableClass.values():
                 movePower = self.setMovesPower(move, self.foePokemonStats, self.pokemonStats, self.foePokemonType, self.pokemonType)
@@ -150,22 +151,25 @@ class decision():
         for move in self.moves_available:
             moveClass = self.moves_availableClass[move]
             movePower = self.setMovesPower(moveClass, self.pokemonStats, self.foePokemonStats, self.pokemonType, self.foePokemonType)
+            movesByPower[move] = movePower
             if self.foePokemonHP - movePower <= 0:
                 return f"move {move}"
             if not movePower:
                 statusMove.append(move)
+
+        movesByPowerOrdered = {move: damage for move, damage in sorted(movesByPower.items(), key=lambda item: item[1], reverse=True)}
         
         if "hyper-beam" in self.moves_available: 
-            self.moves_available.remove("hyper-beam")
+            movesByPowerOrdered.pop("hyper-beam")
             self.moves_availableClass.pop("hyper-beam")
         if "explosion" in self.moves_available: 
-            self.moves_available.remove("explosion")
+            movesByPowerOrdered.pop("explosion")
             self.moves_availableClass.pop("explosion")
 
         if statusMove:
             return f"move {random.choice(statusMove)}"
         else:
-            return f"move {random.choice(self.moves_available)}"
+            return f"move {list(movesByPowerOrdered)[0]}"
 
     def checkSecureChoice(self):
         securePokemon = self.checkSecureSwitch(False)
