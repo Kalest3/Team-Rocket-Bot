@@ -126,8 +126,8 @@ class decision():
                 defFoePokemon = foePokemonStats['defense']
             else:
                 moveDamageClass[move] = 'special'
-                atkPokemon = pokemonStats['special-defense']
-                defFoePokemon = foePokemonStats['special-defense']
+                atkPokemon = pokemonStats['special-attack']
+                defFoePokemon = foePokemonStats['special-attack']
         movePower *= atkPokemon / defFoePokemon / 50
         movePower += 2
         if str(move.type) in pokemonType:
